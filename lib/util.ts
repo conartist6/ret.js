@@ -1,4 +1,4 @@
-import { types, SetTokens } from './types';
+import { SetTokens } from './token-types';
 import * as sets from './sets';
 
 const CTRL = '@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^ ?';
@@ -60,11 +60,11 @@ export const tokenizeClass = (str: string, regexpStr: string): [SetTokens, numbe
       (rs[5] && sets.notInts()) ??
       (rs[6] && sets.notWhitespace()) ??
       (rs[7] && {
-        type: types.RANGE,
+        type: 'range',
         from: (rs[8] || rs[9]).charCodeAt(0),
         to: (c = rs[10]).charCodeAt(c.length - 1),
       }) ??
-      ((c = rs[16]) && { type: types.CHAR, value: c.charCodeAt(0) });
+      ((c = rs[16]) && { type: 'char', value: c.charCodeAt(0) });
 
     if (p) {
       tokens.push(p);

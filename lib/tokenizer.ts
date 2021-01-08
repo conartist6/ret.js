@@ -1,5 +1,5 @@
 import * as util from './util';
-import { Group, types, Root, Token } from './types';
+import { Group, Root, Token } from './token-types';
 import * as sets from './sets';
 
 /**
@@ -10,7 +10,7 @@ import * as sets from './sets';
  */
 export const tokenizer = (regexpStr: string): Root => {
   let i = 0, c: string;
-  let start: Root = { type: types.ROOT, stack: [] };
+  let start: Root = { type: 'root', stack: [] };
 
   // Keep track of last clause/group and stack.
   let lastGroup: Group | Root = start;
@@ -35,11 +35,11 @@ export const tokenizer = (regexpStr: string): Root => {
       case '\\':
         switch (c = str[i++]) {
           case 'b':
-            last.push({ type: types.POSITION, value: 'b' });
+            last.push({ type: 'position', value: 'b' });
             break;
 
           case 'B':
-            last.push({ type: types.POSITION, value: 'B' });
+            last.push({ type: 'position', value: 'B' });
             break;
 
           case 'w':
@@ -70,11 +70,11 @@ export const tokenizer = (regexpStr: string): Root => {
             // Check if c is integer.
             // In which case it's a reference.
             if (/\d/.test(c)) {
-              last.push({ type: types.REFERENCE, value: parseInt(c, 10) });
+              last.push({ type: 'reference', value: parseInt(c, 10) });
 
             // Escaped character.
             } else {
-              last.push({ type: types.CHAR, value: c.charCodeAt(0) });
+              last.push({ type: 'char', value: c.charCodeAt(0) });
             }
         }
 
@@ -83,11 +83,11 @@ export const tokenizer = (regexpStr: string): Root => {
 
       // Positionals.
       case '^':
-        last.push({ type: types.POSITION, value: '^' });
+        last.push({ type: 'position', value: '^' });
         break;
 
       case '$':
-        last.push({ type: types.POSITION, value: '$' });
+        last.push({ type: 'position', value: '$' });
         break;
 
 
@@ -108,7 +108,7 @@ export const tokenizer = (regexpStr: string): Root => {
         // Increase index by length of class.
         i += classTokens[1];
         last.push({
-          type: types.SET,
+          type: 'set',
           set: classTokens[0],
           not,
         });
@@ -127,7 +127,7 @@ export const tokenizer = (regexpStr: string): Root => {
       case '(': {
         // Create group.
         let group: Group = {
-          type: types.GROUP,
+          type: 'group',
           stack: [],
           remember: true,
         };
@@ -223,14 +223,14 @@ export const tokenizer = (regexpStr: string): Root => {
           i += rs[0].length;
 
           last.push({
-            type: types.REPETITION,
+            type: 'repetition',
             min,
             max,
             value: last.pop(),
           });
         } else {
           last.push({
-            type: types.CHAR,
+            type: 'char',
             value: 123,
           });
         }
@@ -243,7 +243,7 @@ export const tokenizer = (regexpStr: string): Root => {
           repeatErr(i);
         }
         last.push({
-          type: types.REPETITION,
+          type: 'repetition',
           min: 0,
           max: 1,
           value: last.pop(),
@@ -255,7 +255,7 @@ export const tokenizer = (regexpStr: string): Root => {
           repeatErr(i);
         }
         last.push({
-          type: types.REPETITION,
+          type: 'repetition',
           min: 1,
           max: Infinity,
           value: last.pop(),
@@ -268,7 +268,7 @@ export const tokenizer = (regexpStr: string): Root => {
           repeatErr(i);
         }
         last.push({
-          type: types.REPETITION,
+          type: 'repetition',
           min: 0,
           max: Infinity,
           value: last.pop(),
@@ -280,7 +280,7 @@ export const tokenizer = (regexpStr: string): Root => {
       // Default is a character that is not `\[](){}?+*^$`.
       default:
         last.push({
-          type: types.CHAR,
+          type: 'char',
           value: c.charCodeAt(0),
         });
     }
