@@ -1,6 +1,7 @@
 export const types = {
-  ROOT: 'root',
-  GROUP: 'group',
+  EXPRESSION: 'expression',
+  LOOKAHEAD: 'lookahead',
+  LOOKBEHIND: 'lookbehind',
   POSITION: 'position',
   SET: 'set',
   RANGE: 'range',

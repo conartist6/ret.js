@@ -35,7 +35,7 @@ export const strToChars = (str: string): string => {
           v: 11,
           f: 12,
           r: 13,
-        }[eslsh];
+        }[eslsh!];
 
     const c = String.fromCharCode(code);
 

@@ -2,9 +2,9 @@ const vows = require('vows');
 const assert = require('assert');
 const sets = require('../dist/sets');
 const ret = require('../dist');
-const types = ret.types;
+const { EXPRESSION, LOOKAHEAD, POSITION, SET, RANGE, REPETITION, REFERENCE, CHAR } = ret.types;
 
-const char = (c) => ({ type: types.CHAR, value: c.charCodeAt(0) });
+const char = (c) => ({ type: CHAR, value: c.charCodeAt(0) });
 
 const charStr = (str) => str.split('').map(char);
 
@@ -15,9 +15,10 @@ vows
       topic: ret('walnuts'),
 
       'List of char tokens': (t) => {
-        assert.deepEqual(t, {
-          type: types.ROOT,
-          stack: charStr('walnuts'),
+        assert.deepStrictEqual(t, {
+          type: EXPRESSION,
+          captureIdx: 0,
+          options: [charStr('walnuts')],
         });
       },
     },
@@ -27,14 +28,17 @@ vows
         'one liner': {
           topic: ret('^yes$'),
           'Positionals at beginning and end': (t) => {
-            assert.deepEqual(t, {
-              type: types.ROOT,
-              stack: [
-                { type: types.POSITION, value: '^' },
-                char('y'),
-                char('e'),
-                char('s'),
-                { type: types.POSITION, value: '$' },
+            assert.deepStrictEqual(t, {
+              type: EXPRESSION,
+              captureIdx: 0,
+              options: [
+                [
+                  { type: POSITION, value: '^' },
+                  char('y'),
+                  char('e'),
+                  char('s'),
+                  { type: POSITION, value: '$' },
+                ],
               ],
             });
           },
@@ -44,20 +48,23 @@ vows
       '\\b and \\B': {
         topic: ret('\\bbeginning\\B'),
         'Word boundary at beginning': (t) => {
-          assert.deepEqual(t, {
-            type: types.ROOT,
-            stack: [
-              { type: types.POSITION, value: 'b' },
-              char('b'),
-              char('e'),
-              char('g'),
-              char('i'),
-              char('n'),
-              char('n'),
-              char('i'),
-              char('n'),
-              char('g'),
-              { type: types.POSITION, value: 'B' },
+          assert.deepStrictEqual(t, {
+            type: EXPRESSION,
+            captureIdx: 0,
+            options: [
+              [
+                { type: POSITION, value: 'b' },
+                char('b'),
+                char('e'),
+                char('g'),
+                char('i'),
+                char('n'),
+                char('n'),
+                char('i'),
+                char('n'),
+                char('g'),
+                { type: POSITION, value: 'B' },
+              ],
             ],
           });
         },
@@ -68,38 +75,38 @@ vows
       topic: ret('\\w\\W\\d\\D\\s\\S.'),
 
       'Words set': (t) => {
-        assert.isArray(t.stack);
-        assert.deepEqual(t.stack[0], sets.words());
+        assert.isArray(t.options[0]);
+        assert.deepStrictEqual(t.options[0][0], sets.words());
       },
 
       'Non-Words set': (t) => {
-        assert.isArray(t.stack);
-        assert.deepEqual(t.stack[1], sets.notWords());
+        assert.isArray(t.options[0]);
+        assert.deepStrictEqual(t.options[0][1], sets.notWords());
       },
 
       'Integer set': (t) => {
-        assert.isArray(t.stack);
-        assert.deepEqual(t.stack[2], sets.ints());
+        assert.isArray(t.options[0]);
+        assert.deepStrictEqual(t.options[0][2], sets.ints());
       },
 
       'Non-Integer set': (t) => {
-        assert.isArray(t.stack);
-        assert.deepEqual(t.stack[3], sets.notInts());
+        assert.isArray(t.options[0]);
+        assert.deepStrictEqual(t.options[0][3], sets.notInts());
       },
 
       'Whitespace set': (t) => {
-        assert.isArray(t.stack);
-        assert.deepEqual(t.stack[4], sets.whitespace());
+        assert.isArray(t.options[0]);
+        assert.deepStrictEqual(t.options[0][4], sets.whitespace());
       },
 
       'Non-Whitespace set': (t) => {
-        assert.isArray(t.stack);
-        assert.deepEqual(t.stack[5], sets.notWhitespace());
+        assert.isArray(t.options[0]);
+        assert.deepStrictEqual(t.options[0][5], sets.notWhitespace());
       },
 
       'Any character set': (t) => {
-        assert.isArray(t.stack);
-        assert.deepEqual(t.stack[6], sets.anyChar());
+        assert.isArray(t.options[0]);
+        assert.deepStrictEqual(t.options[0][6], sets.anyChar());
       },
     },
 
@@ -107,41 +114,44 @@ vows
       topic: ret('[$!a-z123] thing [^0-9]'),
 
       'Class contains all characters and range': (t) => {
-        assert.deepEqual(t, {
-          type: types.ROOT,
-          stack: [
-            {
-              type: types.SET,
-              set: [
-                char('$'),
-                char('!'),
-                { type: types.RANGE, from: 'a'.charCodeAt(0), to: 'z'.charCodeAt(0) },
-                char('1'),
-                char('2'),
-                char('3'),
-              ],
-              not: false,
-            },
+        assert.deepStrictEqual(t, {
+          type: EXPRESSION,
+          captureIdx: 0,
+          options: [
+            [
+              {
+                type: SET,
+                set: [
+                  char('$'),
+                  char('!'),
+                  { type: RANGE, from: 'a'.charCodeAt(0), to: 'z'.charCodeAt(0) },
+                  char('1'),
+                  char('2'),
+                  char('3'),
+                ],
+                not: false,
+              },
 
-            char(' '),
-            char('t'),
-            char('h'),
-            char('i'),
-            char('n'),
-            char('g'),
-            char(' '),
+              char(' '),
+              char('t'),
+              char('h'),
+              char('i'),
+              char('n'),
+              char('g'),
+              char(' '),
 
-            {
-              type: types.SET,
-              set: [
-                {
-                  type: types.RANGE,
-                  from: '0'.charCodeAt(0),
-                  to: '9'.charCodeAt(0),
-                },
-              ],
-              not: true,
-            },
+              {
+                type: SET,
+                set: [
+                  {
+                    type: RANGE,
+                    from: '0'.charCodeAt(0),
+                    to: '9'.charCodeAt(0),
+                  },
+                ],
+                not: true,
+              },
+            ],
           ],
         });
       },
@@ -152,21 +162,24 @@ vows
           const LINE_SEPARATOR = '\u2028';
           const PAGE_SEPARATOR = '\u2029';
 
-          assert.deepEqual(t, {
-            type: types.ROOT,
-            stack: [
-              {
-                type: types.SET,
-                set: [
-                  char('\t'),
-                  char('\r'),
-                  char('\n'),
-                  char(LINE_SEPARATOR),
-                  char(PAGE_SEPARATOR),
-                  char(' '),
-                ],
-                not: false,
-              },
+          assert.deepStrictEqual(t, {
+            type: EXPRESSION,
+            captureIdx: 0,
+            options: [
+              [
+                {
+                  type: SET,
+                  set: [
+                    char('\t'),
+                    char('\r'),
+                    char('\n'),
+                    char(LINE_SEPARATOR),
+                    char(PAGE_SEPARATOR),
+                    char(' '),
+                  ],
+                  not: false,
+                },
+              ],
             ],
           });
         },
@@ -176,12 +189,15 @@ vows
     'Two sets in a row with dash in between': {
       topic: ret('[01]-[ab]'),
       'Contains both classes and no range': (t) => {
-        assert.deepEqual(t, {
-          type: types.ROOT,
-          stack: [
-            { type: types.SET, set: charStr('01'), not: false },
-            char('-'),
-            { type: types.SET, set: charStr('ab'), not: false },
+        assert.deepStrictEqual(t, {
+          type: EXPRESSION,
+          captureIdx: 0,
+          options: [
+            [
+              { type: SET, set: charStr('01'), not: false },
+              char('-'),
+              { type: SET, set: charStr('ab'), not: false },
+            ],
           ],
         });
       },
@@ -191,8 +207,9 @@ vows
       topic: ret('foo|bar|za'),
 
       'Returns root object with options': (t) => {
-        assert.deepEqual(t, {
-          type: types.ROOT,
+        assert.deepStrictEqual(t, {
+          type: EXPRESSION,
+          captureIdx: 0,
           options: [charStr('foo'), charStr('bar'), charStr('za')],
         });
       },
@@ -203,14 +220,17 @@ vows
         topic: ret('hey (there)'),
 
         'Token list contains group token': (t) => {
-          assert.deepEqual(t, {
-            type: types.ROOT,
-            stack: [
-              char('h'),
-              char('e'),
-              char('y'),
-              char(' '),
-              { type: types.GROUP, remember: true, stack: charStr('there') },
+          assert.deepStrictEqual(t, {
+            type: EXPRESSION,
+            captureIdx: 0,
+            options: [
+              [
+                char('h'),
+                char('e'),
+                char('y'),
+                char(' '),
+                { type: EXPRESSION, captureIdx: 1, options: [charStr('there')] },
+              ],
             ],
           });
         },
@@ -220,14 +240,17 @@ vows
         topic: ret('(?:loner)'),
 
         'Remember is false on the group object': (t) => {
-          assert.deepEqual(t, {
-            type: types.ROOT,
-            stack: [
-              {
-                type: types.GROUP,
-                remember: false,
-                stack: charStr('loner'),
-              },
+          assert.deepStrictEqual(t, {
+            type: EXPRESSION,
+            captureIdx: 0,
+            options: [
+              [
+                {
+                  type: EXPRESSION,
+                  captureIdx: null,
+                  options: [charStr('loner')],
+                },
+              ],
             ],
           });
         },
@@ -237,14 +260,21 @@ vows
         topic: ret('what(?!ever)'),
 
         'Returns a group': (t) => {
-          assert.deepEqual(t, {
-            type: types.ROOT,
-            stack: [
-              char('w'),
-              char('h'),
-              char('a'),
-              char('t'),
-              { type: types.GROUP, remember: false, notFollowedBy: true, stack: charStr('ever') },
+          assert.deepStrictEqual(t, {
+            type: EXPRESSION,
+            captureIdx: 0,
+            options: [
+              [
+                char('w'),
+                char('h'),
+                char('a'),
+                char('t'),
+                {
+                  type: LOOKAHEAD,
+                  not: true,
+                  options: [charStr('ever')],
+                },
+              ],
             ],
           });
         },
@@ -254,15 +284,22 @@ vows
         topic: ret('hello(?= there)'),
 
         'Returns a group': (t) => {
-          assert.deepEqual(t, {
-            type: types.ROOT,
-            stack: [
-              char('h'),
-              char('e'),
-              char('l'),
-              char('l'),
-              char('o'),
-              { type: types.GROUP, remember: false, followedBy: true, stack: charStr(' there') },
+          assert.deepStrictEqual(t, {
+            type: EXPRESSION,
+            captureIdx: 0,
+            options: [
+              [
+                char('h'),
+                char('e'),
+                char('l'),
+                char('l'),
+                char('o'),
+                {
+                  type: LOOKAHEAD,
+                  not: false,
+                  options: [charStr(' there')],
+                },
+              ],
             ],
           });
         },
@@ -272,32 +309,37 @@ vows
         topic: ret('a(b(c|(?:d))fg) @_@'),
 
         'Groups within groups': (t) => {
-          assert.deepEqual(t, {
-            type: types.ROOT,
-            stack: [
-              char('a'),
-              {
-                type: types.GROUP,
-                remember: true,
-                stack: [
-                  char('b'),
-                  {
-                    type: types.GROUP,
-                    remember: true,
-                    options: [
-                      [char('c')],
-                      [{ type: types.GROUP, remember: false, stack: charStr('d') }],
+          assert.deepStrictEqual(t, {
+            type: EXPRESSION,
+            captureIdx: 0,
+            options: [
+              [
+                char('a'),
+                {
+                  type: EXPRESSION,
+                  captureIdx: 1,
+                  options: [
+                    [
+                      char('b'),
+                      {
+                        type: EXPRESSION,
+                        captureIdx: 2,
+                        options: [
+                          [char('c')],
+                          [{ type: EXPRESSION, captureIdx: null, options: [charStr('d')] }],
+                        ],
+                      },
+                      char('f'),
+                      char('g'),
                     ],
-                  },
-                  char('f'),
-                  char('g'),
-                ],
-              },
+                  ],
+                },
 
-              char(' '),
-              char('@'),
-              char('_'),
-              char('@'),
+                char(' '),
+                char('@'),
+                char('_'),
+                char('@'),
+              ],
             ],
           });
         },
@@ -309,19 +351,22 @@ vows
         topic: ret('(?:pika){2}'),
 
         'Min and max are the same': (t) => {
-          assert.deepEqual(t, {
-            type: types.ROOT,
-            stack: [
-              {
-                type: types.REPETITION,
-                min: 2,
-                max: 2,
-                value: {
-                  type: types.GROUP,
-                  remember: false,
-                  stack: charStr('pika'),
+          assert.deepStrictEqual(t, {
+            type: EXPRESSION,
+            captureIdx: 0,
+            options: [
+              [
+                {
+                  type: REPETITION,
+                  min: 2,
+                  max: 2,
+                  value: {
+                    type: EXPRESSION,
+                    captureIdx: null,
+                    options: [charStr('pika')],
+                  },
                 },
-              },
+              ],
             ],
           });
         },
@@ -331,9 +376,10 @@ vows
         topic: ret('NO{6,}'),
 
         'To infinity': (t) => {
-          assert.deepEqual(t, {
-            type: types.ROOT,
-            stack: [char('N'), { type: types.REPETITION, min: 6, max: Infinity, value: char('O') }],
+          assert.deepStrictEqual(t, {
+            type: EXPRESSION,
+            captureIdx: 0,
+            options: [[char('N'), { type: REPETITION, min: 6, max: Infinity, value: char('O') }]],
           });
         },
       },
@@ -342,12 +388,15 @@ vows
         topic: ret('pika\\.\\.\\. chu{3,20}!{1,2}'),
 
         'Min and max differ and min < max': (t) => {
-          assert.deepEqual(t, {
-            type: types.ROOT,
-            stack: charStr('pika... ch').concat([
-              { type: types.REPETITION, min: 3, max: 20, value: char('u') },
-              { type: types.REPETITION, min: 1, max: 2, value: char('!') },
-            ]),
+          assert.deepStrictEqual(t, {
+            type: EXPRESSION,
+            captureIdx: 0,
+            options: [
+              charStr('pika... ch').concat([
+                { type: REPETITION, min: 3, max: 20, value: char('u') },
+                { type: REPETITION, min: 1, max: 2, value: char('!') },
+              ]),
+            ],
           });
         },
       },
@@ -356,9 +405,10 @@ vows
         topic: ret('a{mustache}'),
 
         'Returns a non-repetitional': (t) => {
-          assert.deepEqual(t, {
-            type: types.ROOT,
-            stack: charStr('a{mustache}'),
+          assert.deepStrictEqual(t, {
+            type: EXPRESSION,
+            captureIdx: 0,
+            options: [charStr('a{mustache}')],
           });
         },
       },
@@ -369,20 +419,23 @@ vows
         topic: ret('hey(?: you)?'),
 
         'Get back correct min and max': (t) => {
-          assert.deepEqual(t, {
-            type: types.ROOT,
-            stack: charStr('hey').concat([
-              {
-                type: types.REPETITION,
-                min: 0,
-                max: 1,
-                value: {
-                  type: types.GROUP,
-                  remember: false,
-                  stack: charStr(' you'),
+          assert.deepStrictEqual(t, {
+            type: EXPRESSION,
+            captureIdx: 0,
+            options: [
+              charStr('hey').concat([
+                {
+                  type: REPETITION,
+                  min: 0,
+                  max: 1,
+                  value: {
+                    type: EXPRESSION,
+                    captureIdx: null,
+                    options: [charStr(' you')],
+                  },
                 },
-              },
-            ]),
+              ]),
+            ],
           });
         },
       },
@@ -391,19 +444,22 @@ vows
         topic: ret('(no )+'),
 
         'Correct min and max': (t) => {
-          assert.deepEqual(t, {
-            type: types.ROOT,
-            stack: [
-              {
-                type: types.REPETITION,
-                min: 1,
-                max: Infinity,
-                value: {
-                  type: types.GROUP,
-                  remember: true,
-                  stack: charStr('no '),
+          assert.deepStrictEqual(t, {
+            type: EXPRESSION,
+            captureIdx: 0,
+            options: [
+              [
+                {
+                  type: REPETITION,
+                  min: 1,
+                  max: Infinity,
+                  value: {
+                    type: EXPRESSION,
+                    captureIdx: 1,
+                    options: [charStr('no ')],
+                  },
                 },
-              },
+              ],
             ],
           });
         },
@@ -413,12 +469,11 @@ vows
         topic: ret('XF*D'),
 
         '0 to Infinity': (t) => {
-          assert.deepEqual(t, {
-            type: types.ROOT,
-            stack: [
-              char('X'),
-              { type: types.REPETITION, min: 0, max: Infinity, value: char('F') },
-              char('D'),
+          assert.deepStrictEqual(t, {
+            type: EXPRESSION,
+            captureIdx: 0,
+            options: [
+              [char('X'), { type: REPETITION, min: 0, max: Infinity, value: char('F') }, char('D')],
             ],
           });
         },
@@ -429,27 +484,32 @@ vows
       topic: ret('<(\\w+)>\\w*<\\1>'),
 
       'Reference a group': (t) => {
-        assert.deepEqual(t, {
-          type: types.ROOT,
-          stack: [
-            char('<'),
-            {
-              type: types.GROUP,
-              remember: true,
-              stack: [
-                {
-                  type: types.REPETITION,
-                  min: 1,
-                  max: Infinity,
-                  value: sets.words(),
-                },
-              ],
-            },
-            char('>'),
-            { type: types.REPETITION, min: 0, max: Infinity, value: sets.words() },
-            char('<'),
-            { type: types.REFERENCE, value: 1 },
-            char('>'),
+        assert.deepStrictEqual(t, {
+          type: EXPRESSION,
+          captureIdx: 0,
+          options: [
+            [
+              char('<'),
+              {
+                type: EXPRESSION,
+                captureIdx: 1,
+                options: [
+                  [
+                    {
+                      type: REPETITION,
+                      min: 1,
+                      max: Infinity,
+                      value: sets.words(),
+                    },
+                  ],
+                ],
+              },
+              char('>'),
+              { type: REPETITION, min: 0, max: Infinity, value: sets.words() },
+              char('<'),
+              { type: REFERENCE, value: 1 },
+              char('>'),
+            ],
           ],
         });
       },
@@ -461,16 +521,19 @@ vows
           topic: ret('[a\\--\\-]'),
           'Tokenizes correctly': (t) => {
             assert.deepStrictEqual(t, {
-              type: types.ROOT,
-              stack: [
-                {
-                  type: types.SET,
-                  not: false,
-                  set: [
-                    { type: types.CHAR, value: 97 },
-                    { type: types.RANGE, from: 45, to: 45 },
-                  ],
-                },
+              type: EXPRESSION,
+              captureIdx: 0,
+              options: [
+                [
+                  {
+                    type: SET,
+                    not: false,
+                    set: [
+                      { type: CHAR, value: 97 },
+                      { type: RANGE, from: 45, to: 45 },
+                    ],
+                  },
+                ],
               ],
             });
           },
@@ -479,16 +542,19 @@ vows
           topic: ret('[a\\--\\/]'),
           'Tokenizes correctly': (t) => {
             assert.deepStrictEqual(t, {
-              type: types.ROOT,
-              stack: [
-                {
-                  type: types.SET,
-                  not: false,
-                  set: [
-                    { type: types.CHAR, value: 97 },
-                    { type: types.RANGE, from: 45, to: 47 },
-                  ],
-                },
+              type: EXPRESSION,
+              captureIdx: 0,
+              options: [
+                [
+                  {
+                    type: SET,
+                    not: false,
+                    set: [
+                      { type: CHAR, value: 97 },
+                      { type: RANGE, from: 45, to: 47 },
+                    ],
+                  },
+                ],
               ],
             });
           },
@@ -497,16 +563,19 @@ vows
           topic: ret('[c\\--a]'),
           'Tokenizes correctly': (t) => {
             assert.deepStrictEqual(t, {
-              type: types.ROOT,
-              stack: [
-                {
-                  type: types.SET,
-                  not: false,
-                  set: [
-                    { type: types.CHAR, value: 99 },
-                    { type: types.RANGE, from: 45, to: 97 },
-                  ],
-                },
+              type: EXPRESSION,
+              captureIdx: 0,
+              options: [
+                [
+                  {
+                    type: SET,
+                    not: false,
+                    set: [
+                      { type: CHAR, value: 99 },
+                      { type: RANGE, from: 45, to: 97 },
+                    ],
+                  },
+                ],
               ],
             });
           },
@@ -515,16 +584,19 @@ vows
           topic: ret('[\\-\\--\\-]'),
           'Tokenizes correctly': (t) => {
             assert.deepStrictEqual(t, {
-              type: types.ROOT,
-              stack: [
-                {
-                  type: types.SET,
-                  not: false,
-                  set: [
-                    { type: types.CHAR, value: 45 },
-                    { type: types.RANGE, from: 45, to: 45 },
-                  ],
-                },
+              type: EXPRESSION,
+              captureIdx: 0,
+              options: [
+                [
+                  {
+                    type: SET,
+                    not: false,
+                    set: [
+                      { type: CHAR, value: 45 },
+                      { type: RANGE, from: 45, to: 45 },
+                    ],
+                  },
+                ],
               ],
             });
           },
@@ -533,25 +605,28 @@ vows
           topic: ret('[\\w\\--\\-]'),
           'Tokenizes correctly': (t) => {
             assert.deepStrictEqual(t, {
-              type: types.ROOT,
-              stack: [
-                {
-                  type: types.SET,
-                  not: false,
-                  set: [
-                    {
-                      type: types.SET,
-                      not: false,
-                      set: [
-                        { type: types.CHAR, value: 95 },
-                        { type: types.RANGE, from: 97, to: 122 },
-                        { type: types.RANGE, from: 65, to: 90 },
-                        { type: types.RANGE, from: 48, to: 57 },
-                      ],
-                    },
-                    { type: types.RANGE, from: 45, to: 45 },
-                  ],
-                },
+              type: EXPRESSION,
+              captureIdx: 0,
+              options: [
+                [
+                  {
+                    type: SET,
+                    not: false,
+                    set: [
+                      {
+                        type: SET,
+                        not: false,
+                        set: [
+                          { type: CHAR, value: 95 },
+                          { type: RANGE, from: 97, to: 122 },
+                          { type: RANGE, from: 65, to: 90 },
+                          { type: RANGE, from: 48, to: 57 },
+                        ],
+                      },
+                      { type: RANGE, from: 45, to: 45 },
+                    ],
+                  },
+                ],
               ],
             });
           },
@@ -560,13 +635,16 @@ vows
           topic: ret('[9-\\^]'),
           'Tokenizes correctly': (t) => {
             assert.deepStrictEqual(t, {
-              type: types.ROOT,
-              stack: [
-                {
-                  type: types.SET,
-                  not: false,
-                  set: [{ type: types.RANGE, from: 57, to: 94 }],
-                },
+              type: EXPRESSION,
+              captureIdx: 0,
+              options: [
+                [
+                  {
+                    type: SET,
+                    not: false,
+                    set: [{ type: RANGE, from: 57, to: 94 }],
+                  },
+                ],
               ],
             });
           },
@@ -575,13 +653,16 @@ vows
           topic: ret('[2-\\]]'),
           'Tokenizes correctly': (t) => {
             assert.deepStrictEqual(t, {
-              type: types.ROOT,
-              stack: [
-                {
-                  type: types.SET,
-                  not: false,
-                  set: [{ type: types.RANGE, from: 50, to: 93 }],
-                },
+              type: EXPRESSION,
+              captureIdx: 0,
+              options: [
+                [
+                  {
+                    type: SET,
+                    not: false,
+                    set: [{ type: RANGE, from: 50, to: 93 }],
+                  },
+                ],
               ],
             });
           },
@@ -590,13 +671,16 @@ vows
           topic: ret('[\\]-\\^]'),
           'Tokenizes correctly': (t) => {
             assert.deepStrictEqual(t, {
-              type: types.ROOT,
-              stack: [
-                {
-                  type: types.SET,
-                  not: false,
-                  set: [{ type: types.RANGE, from: 93, to: 94 }],
-                },
+              type: EXPRESSION,
+              captureIdx: 0,
+              options: [
+                [
+                  {
+                    type: SET,
+                    not: false,
+                    set: [{ type: RANGE, from: 93, to: 94 }],
+                  },
+                ],
               ],
             });
           },
@@ -605,13 +689,16 @@ vows
           topic: ret('[[-\\]]'),
           'Tokenizes correctly': (t) => {
             assert.deepStrictEqual(t, {
-              type: types.ROOT,
-              stack: [
-                {
-                  type: types.SET,
-                  not: false,
-                  set: [{ type: types.RANGE, from: 91, to: 93 }],
-                },
+              type: EXPRESSION,
+              captureIdx: 0,
+              options: [
+                [
+                  {
+                    type: SET,
+                    not: false,
+                    set: [{ type: RANGE, from: 91, to: 93 }],
+                  },
+                ],
               ],
             });
           },
@@ -620,20 +707,23 @@ vows
           topic: ret('[[-]]'),
           'Tokenizes correctly': (t) => {
             assert.deepStrictEqual(t, {
-              type: types.ROOT,
-              stack: [
-                {
-                  type: types.SET,
-                  not: false,
-                  set: [
-                    { type: types.CHAR, value: 91 },
-                    { type: types.CHAR, value: 45 },
-                  ],
-                },
-                {
-                  type: types.CHAR,
-                  value: 93,
-                },
+              type: EXPRESSION,
+              captureIdx: 0,
+              options: [
+                [
+                  {
+                    type: SET,
+                    not: false,
+                    set: [
+                      { type: CHAR, value: 91 },
+                      { type: CHAR, value: 45 },
+                    ],
+                  },
+                  {
+                    type: CHAR,
+                    value: 93,
+                  },
+                ],
               ],
             });
           },
@@ -642,13 +732,16 @@ vows
           topic: ret('[\\^-_]'),
           'Tokenizes correctly': (t) => {
             assert.deepStrictEqual(t, {
-              type: types.ROOT,
-              stack: [
-                {
-                  type: types.SET,
-                  not: false,
-                  set: [{ type: types.RANGE, from: 94, to: 95 }],
-                },
+              type: EXPRESSION,
+              captureIdx: 0,
+              options: [
+                [
+                  {
+                    type: SET,
+                    not: false,
+                    set: [{ type: RANGE, from: 94, to: 95 }],
+                  },
+                ],
               ],
             });
           },
@@ -657,13 +750,16 @@ vows
           topic: ret('[\\^-^]'),
           'Tokenizes correctly': (t) => {
             assert.deepStrictEqual(t, {
-              type: types.ROOT,
-              stack: [
-                {
-                  type: types.SET,
-                  not: false,
-                  set: [{ type: types.RANGE, from: 94, to: 94 }],
-                },
+              type: EXPRESSION,
+              captureIdx: 0,
+              options: [
+                [
+                  {
+                    type: SET,
+                    not: false,
+                    set: [{ type: RANGE, from: 94, to: 94 }],
+                  },
+                ],
               ],
             });
           },
@@ -672,13 +768,16 @@ vows
           topic: ret('[^\\^-_]'),
           'Tokenizes correctly': (t) => {
             assert.deepStrictEqual(t, {
-              type: types.ROOT,
-              stack: [
-                {
-                  type: types.SET,
-                  not: true,
-                  set: [{ type: types.RANGE, from: 94, to: 95 }],
-                },
+              type: EXPRESSION,
+              captureIdx: 0,
+              options: [
+                [
+                  {
+                    type: SET,
+                    not: true,
+                    set: [{ type: RANGE, from: 94, to: 95 }],
+                  },
+                ],
               ],
             });
           },
@@ -687,13 +786,16 @@ vows
           topic: ret('[^\\^-^]'),
           'Tokenizes correctly': (t) => {
             assert.deepStrictEqual(t, {
-              type: types.ROOT,
-              stack: [
-                {
-                  type: types.SET,
-                  not: true,
-                  set: [{ type: types.RANGE, from: 94, to: 94 }],
-                },
+              type: EXPRESSION,
+              captureIdx: 0,
+              options: [
+                [
+                  {
+                    type: SET,
+                    not: true,
+                    set: [{ type: RANGE, from: 94, to: 94 }],
+                  },
+                ],
               ],
             });
           },
@@ -702,13 +804,16 @@ vows
           topic: ret('[]'),
           'Tokenizes correctly': (t) => {
             assert.deepStrictEqual(t, {
-              type: types.ROOT,
-              stack: [
-                {
-                  type: types.SET,
-                  not: false,
-                  set: [],
-                },
+              type: EXPRESSION,
+              captureIdx: 0,
+              options: [
+                [
+                  {
+                    type: SET,
+                    not: false,
+                    set: [],
+                  },
+                ],
               ],
             });
           },
@@ -717,14 +822,17 @@ vows
           topic: ret('[^]'),
           'Tokenizes correctly': (t) => {
             assert.deepStrictEqual(t, {
-              type: types.ROOT,
-              stack: [
-                {
-                  type: types.SET,
-                  not: true,
-                  set: [],
-                },
+              type: EXPRESSION,
+              options: [
+                [
+                  {
+                    type: SET,
+                    not: true,
+                    set: [],
+                  },
+                ],
               ],
+              captureIdx: 0,
             });
           },
         },

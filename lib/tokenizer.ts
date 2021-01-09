@@ -1,22 +1,23 @@
 import * as util from './util';
-import { Group, Root, Token } from './token-types';
+import { Expression, Group, Token } from './token-types';
 import * as sets from './sets';
 
 /**
  * Tokenizes a regular expression (that is currently a string)
  * @param {string} regexpStr String of regular expression to be tokenized
  *
- * @returns {Root}
+ * @returns {Expression}
  */
-export const tokenizer = (regexpStr: string): Root => {
+export const tokenizer = (regexpStr: string): Expression => {
   let i = 0,
     c: string;
-  const start: Root = { type: 'root', stack: [] };
+  let captureIdx = 0;
+  const root: Expression = { type: 'expression', options: [[]], captureIdx };
 
   // Keep track of last clause/group and stack.
-  let lastGroup: Group | Root = start;
-  let last: Token[] = start.stack;
-  const groupStack: (Group | Root)[] = [];
+  let lastGroup: Group = root;
+  let last: Token[] = root.options[0];
+  const groupStack: Group[] = [];
 
   const repeatErr = (col: number) => {
     throw new SyntaxError(
@@ -120,12 +121,7 @@ export const tokenizer = (regexpStr: string): Root => {
 
       // Push group onto stack.
       case '(': {
-        // Create group.
-        const group: Group = {
-          type: 'group',
-          stack: [],
-          remember: true,
-        };
+        let group: Group;
 
         // If if this is a special kind of group.
         if (str[i] === '?') {
@@ -133,20 +129,30 @@ export const tokenizer = (regexpStr: string): Root => {
           i += 2;
 
           // Match if followed by.
-          if (c === '=') {
-            group.followedBy = true;
-
-            // Match if not followed by.
-          } else if (c === '!') {
-            group.notFollowedBy = true;
-          } else if (c !== ':') {
+          if ('=!'.includes(c)) {
+            group = {
+              type: 'lookahead',
+              options: [[]],
+              not: c === '!',
+            };
+          } else if (c === ':') {
+            group = {
+              type: 'expression',
+              options: [[]],
+              captureIdx: null,
+            };
+          } else {
             throw new SyntaxError(
               `Invalid regular expression: /${regexpStr}/: Invalid group, character '${c}'` +
                 ` after '?' at column ${i - 1}`,
             );
           }
-
-          group.remember = false;
+        } else {
+          group = {
+            type: 'expression',
+            options: [[]],
+            captureIdx: ++captureIdx,
+          };
         }
 
         // Insert subgroup into current group stack.
@@ -157,7 +163,7 @@ export const tokenizer = (regexpStr: string): Root => {
 
         // Make this new group the current group.
         lastGroup = group;
-        last = group.stack;
+        last = group.options[0];
 
         break;
       }
@@ -169,24 +175,16 @@ export const tokenizer = (regexpStr: string): Root => {
             `Invalid regular expression: /${regexpStr}/: Unmatched ) at column ${i - 1}`,
           );
         }
-        lastGroup = groupStack.pop();
+        lastGroup = groupStack.pop()!;
 
         // Check if this group has a PIPE.
         // To get back the correct last stack.
-        last = lastGroup.options
-          ? lastGroup.options[lastGroup.options.length - 1]
-          : lastGroup.stack;
+        last = lastGroup.options[lastGroup.options.length - 1];
 
         break;
 
       // Use pipe character to give more choices.
       case '|': {
-        // Create array where options are if this is the first PIPE
-        // in this clause.
-        if (!lastGroup.options) {
-          lastGroup.options = [lastGroup.stack];
-          delete lastGroup.stack;
-        }
         // Create a new stack and add to options for rest of clause.
         const stack: Token[] = [];
         lastGroup.options.push(stack);
@@ -215,7 +213,7 @@ export const tokenizer = (regexpStr: string): Root => {
             type: 'repetition',
             min,
             max,
-            value: last.pop(),
+            value: last.pop()!,
           });
         } else {
           last.push({
@@ -235,7 +233,7 @@ export const tokenizer = (regexpStr: string): Root => {
           type: 'repetition',
           min: 0,
           max: 1,
-          value: last.pop(),
+          value: last.pop()!,
         });
         break;
 
@@ -247,7 +245,7 @@ export const tokenizer = (regexpStr: string): Root => {
           type: 'repetition',
           min: 1,
           max: Infinity,
-          value: last.pop(),
+          value: last.pop()!,
         });
 
         break;
@@ -260,7 +258,7 @@ export const tokenizer = (regexpStr: string): Root => {
           type: 'repetition',
           min: 0,
           max: Infinity,
-          value: last.pop(),
+          value: last.pop()!,
         });
 
         break;
@@ -279,5 +277,5 @@ export const tokenizer = (regexpStr: string): Root => {
     throw new SyntaxError(`Invalid regular expression: /${regexpStr}/: Unterminated group`);
   }
 
-  return start;
+  return root;
 };
