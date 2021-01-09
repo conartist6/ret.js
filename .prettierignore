@@ -1,0 +1,6 @@
+/coverage
+/dist
+/.nyc_output
+
+/LICENSE
+/tsconfig.json

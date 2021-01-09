@@ -9,31 +9,30 @@ import * as sets from './sets';
  * @returns {Root}
  */
 export const tokenizer = (regexpStr: string): Root => {
-  let i = 0, c: string;
-  let start: Root = { type: 'root', stack: [] };
+  let i = 0,
+    c: string;
+  const start: Root = { type: 'root', stack: [] };
 
   // Keep track of last clause/group and stack.
   let lastGroup: Group | Root = start;
   let last: Token[] = start.stack;
-  let groupStack: (Group | Root)[] = [];
+  const groupStack: (Group | Root)[] = [];
 
   const repeatErr = (col: number) => {
     throw new SyntaxError(
-      `Invalid regular expression: /${
-        regexpStr
-      }/: Nothing to repeat at column ${col - 1}`,
+      `Invalid regular expression: /${regexpStr}/: Nothing to repeat at column ${col - 1}`,
     );
   };
 
   // Decode a few escaped characters.
-  let str = util.strToChars(regexpStr);
+  const str = util.strToChars(regexpStr);
 
   // Iterate through each character in string.
   while (i < str.length) {
-    switch (c = str[i++]) {
+    switch ((c = str[i++])) {
       // Handle escaped characters, inclues a few sets.
       case '\\':
-        switch (c = str[i++]) {
+        switch ((c = str[i++])) {
           case 'b':
             last.push({ type: 'position', value: 'b' });
             break;
@@ -72,14 +71,13 @@ export const tokenizer = (regexpStr: string): Root => {
             if (/\d/.test(c)) {
               last.push({ type: 'reference', value: parseInt(c, 10) });
 
-            // Escaped character.
+              // Escaped character.
             } else {
               last.push({ type: 'char', value: c.charCodeAt(0) });
             }
         }
 
         break;
-
 
       // Positionals.
       case '^':
@@ -89,7 +87,6 @@ export const tokenizer = (regexpStr: string): Root => {
       case '$':
         last.push({ type: 'position', value: '$' });
         break;
-
 
       // Handle custom sets.
       case '[': {
@@ -103,7 +100,7 @@ export const tokenizer = (regexpStr: string): Root => {
         }
 
         // Get all the characters in class.
-        let classTokens = util.tokenizeClass(str.slice(i), regexpStr);
+        const classTokens = util.tokenizeClass(str.slice(i), regexpStr);
 
         // Increase index by length of class.
         i += classTokens[1];
@@ -116,17 +113,15 @@ export const tokenizer = (regexpStr: string): Root => {
         break;
       }
 
-
       // Class of any character except \n.
       case '.':
         last.push(sets.anyChar());
         break;
 
-
       // Push group onto stack.
       case '(': {
         // Create group.
-        let group: Group = {
+        const group: Group = {
           type: 'group',
           stack: [],
           remember: true,
@@ -141,15 +136,13 @@ export const tokenizer = (regexpStr: string): Root => {
           if (c === '=') {
             group.followedBy = true;
 
-          // Match if not followed by.
+            // Match if not followed by.
           } else if (c === '!') {
             group.notFollowedBy = true;
           } else if (c !== ':') {
             throw new SyntaxError(
-              `Invalid regular expression: /${
-                regexpStr
-              }/: Invalid group, character '${c}'` +
-              ` after '?' at column ${i - 1}`,
+              `Invalid regular expression: /${regexpStr}/: Invalid group, character '${c}'` +
+                ` after '?' at column ${i - 1}`,
             );
           }
 
@@ -169,26 +162,22 @@ export const tokenizer = (regexpStr: string): Root => {
         break;
       }
 
-
       // Pop group out of stack.
       case ')':
         if (groupStack.length === 0) {
           throw new SyntaxError(
-            `Invalid regular expression: /${
-              regexpStr
-            }/: Unmatched ) at column ${i - 1}`,
+            `Invalid regular expression: /${regexpStr}/: Unmatched ) at column ${i - 1}`,
           );
         }
         lastGroup = groupStack.pop();
 
         // Check if this group has a PIPE.
         // To get back the correct last stack.
-        last = lastGroup.options ?
-          lastGroup.options[lastGroup.options.length - 1] :
-          lastGroup.stack;
+        last = lastGroup.options
+          ? lastGroup.options[lastGroup.options.length - 1]
+          : lastGroup.stack;
 
         break;
-
 
       // Use pipe character to give more choices.
       case '|': {
@@ -199,13 +188,12 @@ export const tokenizer = (regexpStr: string): Root => {
           delete lastGroup.stack;
         }
         // Create a new stack and add to options for rest of clause.
-        let stack: Token[] = [];
+        const stack: Token[] = [];
         lastGroup.options.push(stack);
         last = stack;
 
         break;
       }
-
 
       // Repetition.
       // For every repetition, remove last element from last stack
@@ -213,13 +201,14 @@ export const tokenizer = (regexpStr: string): Root => {
       // This design is chosen because there could be more than
       // one repetition symbols in a regex i.e. `a?+{2,3}`.
       case '{': {
-        let rs = /^(\d+)(,(\d+)?)?\}/.exec(str.slice(i)), min, max;
+        const rs = /^(\d+)(,(\d+)?)?\}/.exec(str.slice(i));
+        let min, max;
         if (rs !== null) {
           if (last.length === 0) {
             repeatErr(i);
           }
           min = parseInt(rs[1], 10);
-          max = rs[2] ? rs[3] ? parseInt(rs[3], 10) : Infinity : min;
+          max = rs[2] ? (rs[3] ? parseInt(rs[3], 10) : Infinity) : min;
           i += rs[0].length;
 
           last.push({
@@ -276,7 +265,6 @@ export const tokenizer = (regexpStr: string): Root => {
 
         break;
 
-
       // Default is a character that is not `\[](){}?+*^$`.
       default:
         last.push({
@@ -288,11 +276,7 @@ export const tokenizer = (regexpStr: string): Root => {
 
   // Check if any groups have not been closed.
   if (groupStack.length !== 0) {
-    throw new SyntaxError(
-      `Invalid regular expression: /${
-        regexpStr
-      }/: Unterminated group`,
-    );
+    throw new SyntaxError(`Invalid regular expression: /${regexpStr}/: Unterminated group`);
   }
 
   return start;

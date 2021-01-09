@@ -1,7 +1,7 @@
 import { Set, Range, Char } from './token-types';
 
-type SetsFunc = () => (Range | Char)[]
-export type SetFunc = () => Set
+type SetsFunc = () => (Range | Char)[];
+export type SetFunc = () => Set;
 
 const INTS: SetsFunc = () => [{ type: 'range', from: 48, to: 57 }];
 
